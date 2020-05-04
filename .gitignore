@@ -6,3 +6,6 @@ TestApp1/C-Sharp-Algorithms-master/
 TestApp1/TestApp1/bin/
 
 TestApp1/TestApp1/obj/
+
+.fake
+.ionide
