@@ -7,6 +7,11 @@ open DataStructures.Lists
 open FsCheck.Experimental
 //module List
 
+let rec matchList = fun (skipList:SkipList<int>) (fsList:List<int>) ->
+    match fsList with
+        |  [] -> false
+        | a::rest -> skipList.Contains(a) && matchList skipList rest
+
 
 let removeFromList = fun aList removeItem -> 
     let rec innerRemove = fun theList rItem head ->
@@ -19,14 +24,16 @@ let removeFromList = fun aList removeItem ->
 
 let isSkipListEqualToList = fun (skipList:SkipList<int>) (fsList:List<int>) ->
     
-    for count in skipList.Count do
+    for count in skipList do
         let valueA = skipList.Peek() in
         let valueB = List.head fsList in
         if not(valueA = valueB) then
-            return false
+            false
         else
             skipList.Remove(valueA)
         
+
+   // in let result = false
 
 type Counter(?initial:int) =
     let mutable n = defaultArg initial 0
@@ -40,17 +47,17 @@ type Counter(?initial:int) =
 
 
 let spec =
-    let inc = 
+    let inc i = 
         { new Operation<Counter,int>() with
-            member __.Run m = m + 1
+            member __.Run m = m + i
             member __.Check (c,m) = 
                 let res = c.Inc() 
                 m = res 
                 |@ sprintf "Inc: model = %i, actual = %i" m res
             override __.ToString() = "inc"}
-    let dec = 
+    let dec i = 
         { new Operation<Counter,int>() with
-            member __.Run m = m - 1
+            member __.Run m = m - i
             override __.Pre m = 
                 m > 0
             member __.Check (c,m) = 
@@ -64,7 +71,7 @@ let spec =
             member __.Model() = initialValue }
     { new Machine<Counter,int>() with
         member __.Setup = Gen.choose (0,3) |> Gen.map create |> Arb.fromGen
-        member __.Next _ = Gen.elements [ inc; dec ] }
+        member __.Next _ = Gen.choose (0,3) |> Gen.map(fun i -> inc i)}
 
 
 let skipListSpec = 
