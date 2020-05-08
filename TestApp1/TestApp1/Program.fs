@@ -15,6 +15,12 @@ let matchList2 = fun (skipList:SkipList<int>) (fsList:List<int>) ->
             | a::rest -> skipList2.Contains(a) && matchList skipList2 rest 
         in matchList skipList fsList
 
+let inList = fun (fsList:List<int>) i -> 
+    let rec isInList = fun (fsList2:List<int>) i -> 
+        match fsList2 with 
+        | [] -> false
+        | a::rest -> a = i || isInList rest i
+    in isInList fsList i
 
 let removeFromList = fun aList removeItem -> 
     let rec innerRemove = fun theList rItem head ->
@@ -67,13 +73,40 @@ let skipListSpec =
                 |@ sprintf "Clear: model = %i, actual = %i CONTENT model = %A, actual = %s" m.Length c.Count m (c.ToString())
             override __.ToString() = sprintf "clear"
             }
+    let count = 
+        { new Operation<SkipList<int>, List<int>>() with
+            member __.Run m = m
+            member __.Check (c, m) =
+                let res = c.Count = m.Length
+                in res = true
+                |@ sprintf "Count: model = %i, actual = %i" m.Length c.Count
+            override __.ToString() = sprintf "count"
+        }
+    let isEmpty = 
+        { new Operation<SkipList<int>, List<int>>() with
+            member __.Run m = m
+            member __.Check (c, m) =
+                let res = (c.IsEmpty = (m.Length = 0))
+                in res = true
+                |@ sprintf "IsEmpty: model = %b, actual = %b" (m.Length = 0) c.IsEmpty
+             override __.ToString() = sprintf "isEmpty"
+        }
+    let contains i =
+        { new Operation<SkipList<int>, List<int>>() with
+            member __.Run m = m
+            member __.Check(c, m) =
+                let res = (inList m i) = (c.Contains(i))
+                in res = true
+                |@ sprintf "Contains %i: model = %b, actual %b" i (inList m i) (c.Contains(i))
+            override __.ToString() = sprintf "contains"
+        }
     let create = 
         { new Setup<SkipList<int>,List<int>>() with
             member __.Actual() = SkipList() : SkipList<int>
             member ___.Model() = [] }
     { new Machine<SkipList<int>, List<int>>() with 
         member __.Setup =  Gen.constant create |> Arb.fromGen
-        member __.Next _ =  Gen.oneof[ Gen.choose(0,100) |> Gen.map2 (fun op i -> op i) (Gen.elements [add;rem;]); Gen.elements [clear]]}
+        member __.Next _ =  Gen.oneof[ Gen.elements [count;isEmpty]; Gen.choose(0,100) |> Gen.map2 (fun op i -> op i) (Gen.elements [add;rem;contains]); Gen.elements [clear]]}
 
 
 [<EntryPoint>]
