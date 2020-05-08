@@ -92,13 +92,31 @@ let skipListSpec =
                   |@ sprintf "Contains returned: model = %b, actual = %b" mres res
               override __.ToString() = sprintf "contains %i" i
               }
-    let create = 
+    let count = 
+        { new Operation<SkipList<int>, List<int>>() with
+            member __.Run m = m
+            member __.Check (c, m) =
+                let res = c.Count = m.Length
+                in res = true
+                |@ sprintf "Count: model = %i, actual = %i" m.Length c.Count
+            override __.ToString() = sprintf "count"
+        }
+    let isEmpty = 
+        { new Operation<SkipList<int>, List<int>>() with
+            member __.Run m = m
+            member __.Check (c, m) =
+                let res = (c.IsEmpty = (m.Length = 0))
+                in res = true
+                |@ sprintf "IsEmpty: model = %b, actual = %b" (m.Length = 0) c.IsEmpty
+             override __.ToString() = sprintf "isEmpty"
+        }
+      let create = 
         { new Setup<SkipList<int>,List<int>>() with
             member __.Actual() = SkipList(123) : SkipList<int>
             member ___.Model() = [] }
     { new Machine<SkipList<int>, List<int>>() with 
         member __.Setup =  Gen.constant create |> Arb.fromGen
-        member __.Next _ =  Gen.oneof[ Gen.choose(0,100) |> Gen.map2 (fun op i -> op i) (Gen.elements [add;rem;find;contains]); Gen.elements [clear; peek]]}
+        member __.Next _ =  Gen.oneof[ Gen.choose(0,100) |> Gen.map2 (fun op i -> op i) (Gen.elements [add;rem;find;contains]); Gen.elements [clear; peek;count;isEmpty]]}
 
 
 [<EntryPoint>]
