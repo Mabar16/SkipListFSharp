@@ -24,6 +24,8 @@ let isSkipListEqualToList = fun (skipList:SkipList<int>) (fsList:List<int>) ->
             | a::rest -> skipList2.Contains(a) && matchList skipList2 rest 
         in matchList skipList fsList
 
+let numberGen = Gen.frequency([(8,Arb.generate<int>);(1,Gen.constant(System.Int32.MinValue));(1,Gen.constant(System.Int32.MaxValue))])
+
 let skipListSpec = 
     let add i = 
         { new Operation<SkipList<int>,List<int>>() with
@@ -116,7 +118,7 @@ let skipListSpec =
             member ___.Model() = [] }
     { new Machine<SkipList<int>, List<int>>() with 
         member __.Setup =  Gen.constant create |> Arb.fromGen
-        member __.Next _ =  Gen.oneof[ Gen.choose(0,100) |> Gen.map2 (fun op i -> op i) (Gen.elements [add;rem;find;contains]); Gen.elements [clear; peek;count;isEmpty]]}
+        member __.Next _ =  Gen.oneof[ numberGen |> Gen.map2 (fun op i -> op i) (Gen.elements [add;rem;find;contains]); Gen.elements [clear; peek;count;isEmpty]]}
 
 
 [<EntryPoint>]
