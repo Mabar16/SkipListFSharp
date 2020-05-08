@@ -7,7 +7,6 @@ open DataStructures.Lists
 open FsCheck.Experimental
 //module List
 
-
 let removeFromList = fun aList removeItem -> 
     let rec innerRemove = fun theList rItem head ->
         match theList with
@@ -18,57 +17,22 @@ let removeFromList = fun aList removeItem ->
     in innerRemove aList removeItem []
 
 let isSkipListEqualToList = fun (skipList:SkipList<int>) (fsList:List<int>) ->
-    skipList.Count = fsList.Length 
-
-
-type Counter(?initial:int) =
-    let mutable n = defaultArg initial 0
-    member __.Inc() = 
-        //silly bug
-        if n <= 3  then n <- n + 1 else n <- n + 2
-        n
-    member __.Dec() = if n <= 0 then failwithf "Precondition fail" else n <- n - 1; n
-    member __.Reset() = n <- 0
-    override __.ToString() = sprintf "Counter = %i" n
-
-
-//let spec =
-//    let inc = 
-//        { new Operation<Counter,int>() with
-//            member __.Run m = m + 1
-//            member __.Check (c,m) = 
-//                let res = c.Inc() 
-//                m = res 
-//                |@ sprintf "Inc: model = %i, actual = %i" m res
-//            override __.ToString() = "inc"}
-//    let dec = 
-//        { new Operation<Counter,int>() with
-//            member __.Run m = m - 1
-//            override __.Pre m = 
-//                m > 0
-//            member __.Check (c,m) = 
-//                let res = c.Dec()
-//                m = res 
-//                |@ sprintf "Dec: model = %i, actual = %i" m res
-//            override __.ToString() = "dec"}
-//    let create initialValue = 
-//        { new Setup<Counter,int>() with
-//            member __.Actual() = new Counter(initialValue)
-//            member __.Model() = initialValue }
-//    { new Machine<Counter,int>() with
-//        member __.Setup = Gen.choose (0,3) |> Gen.map create |> Arb.fromGen
-//        member __.Next _ = Gen.elements [ inc; dec ] }
-
+    skipList.Count = fsList.Length && 
+        let rec matchList = fun (skipList2:SkipList<int>) (fsList2:List<int>) ->
+            match fsList2 with
+            |  [] -> true
+            | a::rest -> skipList2.Contains(a) && matchList skipList2 rest 
+        in matchList skipList fsList
 
 let skipListSpec = 
     let add i = 
         { new Operation<SkipList<int>,List<int>>() with
-            member __.Run m = i::m
+            member __.Run m = List.sort (i::m)
             member __.Check (c, m) =
                 c.Add(i)
-                let res = isSkipListEqualToList c m
+                let res = isSkipListEqualToList c m//c.Contains(i)
                    in res = true
-                |@ sprintf "Dec: model = %i, actual = %i" m.Length c.Count
+                |@ sprintf "Add: model = %s, actual = %s" (m.ToString()) (c.ToString())
             override __.ToString() = sprintf "add %i" i }
     let rem i = 
         { new Operation<SkipList<int>,List<int>>() with
@@ -76,10 +40,10 @@ let skipListSpec =
             override __.Pre m = 
                 (m.Length) > 0
             member __.Check (c,m) = 
-                c.Remove(i)
+                c.Remove(i) |> ignore;
                 let res =isSkipListEqualToList c m 
                 in res = true
-                |@ sprintf "Dec: model = %i, actual = %i" m.Length c.Count
+                |@ sprintf "Rem: model = %s, actual = %s" (m.ToString()) (c.ToString())
             override __.ToString() = sprintf "rem %i" i 
             }
     let clear = 
@@ -87,33 +51,81 @@ let skipListSpec =
             member __.Run m = []
             member __.Check (c,m) = 
                 c.Clear()
-                let res = isSkipListEqualToList c m
+                let res = isSkipListEqualToList c m && c.IsEmpty
                 in res = true
-                |@ sprintf "Dec: model = %i, actual%i" m.Length c.Count
+                |@ sprintf "Clear: model = %s, actual = %s" (m.ToString()) (c.ToString())
             override __.ToString() = sprintf "clear"
             }
+    let peek = 
+        { new Operation<SkipList<int>, List<int>>() with
+            member __.Run m = m
+            override __.Pre m = 
+                (m.Length) > 0
+            member __.Check (c,m) = 
+                
+                let res = c.Peek()
+                in let mres = m.Head
+                    in res = mres
+                |@ sprintf "Peek returned: model = %i, actual = %i" mres res
+            override __.ToString() = sprintf "peek"
+            }
+    let find i= 
+        { new Operation<SkipList<int>, List<int>>() with
+            member __.Run m = m
+            member __.Check (c,m) = 
+                
+                let res = c.Find(i) // res is a bool * int tuple
+                in let mres = List.contains i m
+                    in ((mres = false && (fst res) = false) ||                    
+                        ((fst res) = mres && (snd res) = i))
+                |@ sprintf "Find returned: model = %A, actual = %A" (mres,i) res
+            override __.ToString() = sprintf "find %i" i
+            }
+    let contains i= 
+          { new Operation<SkipList<int>, List<int>>() with
+              member __.Run m = m
+              member __.Check (c,m) = 
+                  
+                  let res = c.Contains(i) // res is a bool
+                  in let mres = List.contains i m
+                      in (res = mres)
+                  |@ sprintf "Contains returned: model = %b, actual = %b" mres res
+              override __.ToString() = sprintf "contains %i" i
+              }
+    let count = 
+        { new Operation<SkipList<int>, List<int>>() with
+            member __.Run m = m
+            member __.Check (c, m) =
+                let res = c.Count = m.Length
+                in res = true
+                |@ sprintf "Count: model = %i, actual = %i" m.Length c.Count
+            override __.ToString() = sprintf "count"
+        }
+    let isEmpty = 
+        { new Operation<SkipList<int>, List<int>>() with
+            member __.Run m = m
+            member __.Check (c, m) =
+                let res = (c.IsEmpty = (m.Length = 0))
+                in res = true
+                |@ sprintf "IsEmpty: model = %b, actual = %b" (m.Length = 0) c.IsEmpty
+             override __.ToString() = sprintf "isEmpty"
+        }
     let create = 
         { new Setup<SkipList<int>,List<int>>() with
-            member __.Actual() = SkipList() : SkipList<int>
+            member __.Actual() = SkipList(123) : SkipList<int>
             member ___.Model() = [] }
     { new Machine<SkipList<int>, List<int>>() with 
         member __.Setup =  Gen.constant create |> Arb.fromGen
-        member __.Next _ =  Gen.oneof[ Gen.choose(0,100) |> Gen.map2 (fun op i -> op i) (Gen.elements [add;rem;]; Gen.elements {clear}]}
-
-
-Check.Quick (StateMachine.toProperty skipListSpec)
+        member __.Next _ =  Gen.oneof[ Gen.choose(0,100) |> Gen.map2 (fun op i -> op i) (Gen.elements [add;rem;find;contains]); Gen.elements [clear; peek;count;isEmpty]]}
 
 
 [<EntryPoint>]
+Check.Quick (StateMachine.toProperty skipListSpec)
+
+
+
 let main argv =
-    let theList = [1;2;3] in 
-        Console.WriteLine theList;
-    let myList = SkipList() : SkipList<int> in 
-        myList.Add(15);
-        myList.Remove(15);
-     
-        let theresult = "COUNT : " + myList.Count.ToString() in
-            Console.WriteLine theresult;
+ 
     0 // return an integer exit code
 
 
