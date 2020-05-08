@@ -122,7 +122,8 @@ let skipListSpec =
 
 
 [<EntryPoint>]
-Check.Quick (StateMachine.toProperty skipListSpec)
+Check.One({ Config.Quick with MaxTest = 1000; QuietOnSuccess=true }, fun _ -> true)
+Check.Quick  (StateMachine.toProperty skipListSpec)
 
 
 
