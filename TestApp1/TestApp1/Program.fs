@@ -6,6 +6,7 @@ open System
 open DataStructures.Lists
 open FsCheck.Experimental
 //module List
+let mutable statslist = [] :List<int>
 
 let removeFromList = fun aList removeItem -> 
     let rec innerRemove = fun theList rItem head ->
@@ -32,6 +33,7 @@ let skipListSpec =
             member __.Run m = List.sort (i::m)
             member __.Check (c, m) =
                 c.Add(i)
+                statslist <- i::statslist
                 let res = isSkipListEqualToList c m//c.Contains(i)
                    in res = true
                 |@ sprintf "Add: model = %s, actual = %s" (m.ToString()) (c.ToString())
@@ -42,6 +44,7 @@ let skipListSpec =
             override __.Pre m = 
                 (m.Length) > 0
             member __.Check (c,m) = 
+                statslist <- i::statslist
                 c.Remove(i) |> ignore;
                 let res =isSkipListEqualToList c m 
                 in res = true
@@ -75,7 +78,7 @@ let skipListSpec =
         { new Operation<SkipList<int>, List<int>>() with
             member __.Run m = m
             member __.Check (c,m) = 
-                
+                statslist <- i::statslist
                 let res = c.Find(i) // res is a bool * int tuple
                 in let mres = List.contains i m
                     in ((mres = false && (fst res) = false) ||                    
@@ -87,7 +90,7 @@ let skipListSpec =
           { new Operation<SkipList<int>, List<int>>() with
               member __.Run m = m
               member __.Check (c,m) = 
-                  
+                  statslist <- i::statslist
                   let res = c.Contains(i) // res is a bool
                   in let mres = List.contains i m
                       in (res = mres)
@@ -118,14 +121,29 @@ let skipListSpec =
             member ___.Model() = [] }
     { new Machine<SkipList<int>, List<int>>() with 
         member __.Setup =  Gen.constant create |> Arb.fromGen
-        member __.Next _ =  Gen.oneof[ numberGen |> Gen.map2 (fun op i -> op i) (Gen.elements [add;rem;find;contains]); Gen.elements [clear; peek;count;isEmpty]]}
+        member __.Next _ =  Gen.oneof[ Gen.choose(0,100) |> Gen.map2 (fun op i -> op i) (Gen.elements [add;rem;find;contains]); Gen.elements [clear; peek;count;isEmpty]]}
 
 
 [<EntryPoint>]
 Check.Quick (StateMachine.toProperty skipListSpec)
 
+let rec countelemsininterval list min max accum = match list with
+    [] -> accum
+    | i::rest -> 
+    if (i >= min && i < max) 
+    then countelemsininterval rest min max (1+accum) 
+    else countelemsininterval rest min max accum
+    
 
-
+let printstats list =  
+    
+    Console.WriteLine("less than 0: " + (countelemsininterval list -999999 0 0).ToString())
+    Console.WriteLine("0-5: " + (countelemsininterval list 0 5 0).ToString())
+    Console.WriteLine("5-100: " + (countelemsininterval list 5 100 0).ToString())
+    Console.WriteLine("100-1000: " + (countelemsininterval list 100 1000 0).ToString())
+    Console.WriteLine("LARGE: " + (countelemsininterval list 1000 99999999 0).ToString())
+    
+printstats statslist
 let main argv =
  
     0 // return an integer exit code
