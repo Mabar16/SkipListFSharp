@@ -76,11 +76,21 @@ let skipListSpec =
             override __.Pre m = 
                 (m.Length) > 0
             member __.Check (c,m) = 
-                c.Remove(i);
+                c.Remove(i)
                 let res =isSkipListEqualToList c m 
                 in res = true
                 |@ sprintf "Dec: model = %i, actual = %i" m.Length c.Count
             override __.ToString() = sprintf "rem %i" i 
+            }
+    let clear = 
+        { new Operation<SkipList<int>, List<int>>() with
+            member __.Run m = []
+            member __.Check (c,m) = 
+                c.Clear()
+                let res = isSkipListEqualToList c m
+                in res = true
+                |@ sprintf "Dec: model = %i, actual%i" m.Length c.Count
+            override __.ToString() = sprintf "clear"
             }
     let create = 
         { new Setup<SkipList<int>,List<int>>() with
@@ -88,8 +98,7 @@ let skipListSpec =
             member ___.Model() = [] }
     { new Machine<SkipList<int>, List<int>>() with 
         member __.Setup =  Gen.constant create |> Arb.fromGen
-        member __.Next _ = Gen.choose(0,100) |> Gen.map2 (fun op i -> op i) (Gen.elements [add;rem]) }
-
+        member __.Next _ =  Gen.oneof[ Gen.choose(0,100) |> Gen.map2 (fun op i -> op i) (Gen.elements [add;rem;]; Gen.elements {clear}]}
 
 
 Check.Quick (StateMachine.toProperty skipListSpec)
