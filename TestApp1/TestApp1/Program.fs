@@ -24,7 +24,10 @@ let isSkipListEqualToList = fun (skipList:SkipList<int>) (fsList:List<int>) ->
             | a::rest -> skipList2.Contains(a) && matchList skipList2 rest 
         in matchList skipList fsList
 
-let numberGen = Gen.frequency([(8,Arb.generate<int>);(1,Gen.constant(System.Int32.MinValue));(1,Gen.constant(System.Int32.MaxValue))])
+
+let numberGen = Gen.frequency([(48,Arb.generate<int>);(1,Gen.constant(System.Int32.MinValue));(1,Gen.constant(System.Int32.MaxValue))])
+let numberGe2n = Gen.choose(-2147483648, 214748363)
+//let numberGe2n = Gen.choose(System.Int32.MinValue, (System.Int32.MaxValue-1))
 
 let skipListSpec = 
     let add i = 
@@ -120,11 +123,16 @@ let skipListSpec =
         member __.Setup =  Gen.constant create |> Arb.fromGen
         member __.Next _ =  Gen.oneof[ numberGen |> Gen.map2 (fun op i -> op i) (Gen.elements [add;rem;find;contains]); Gen.elements [clear; peek;count;isEmpty]]}
 
+let configuration = {Config.Quick with MaxTest = 10000; Config.Name = "SkipList test" } in
 
-[<EntryPoint>]
-Check.One({ Config.Quick with MaxTest = 1000; QuietOnSuccess=true }, fun _ -> true)
-Check.Quick  (StateMachine.toProperty skipListSpec)
+let insertKeepsOrder (skipList:SkipList<int>) (i:int) = skipList.Add(i) |> Prop.collect(i)
+Check.One(configuration,  insertKeepsOrder)
 
+//[<EntryPoint>]
+
+//Check.One(configuration, StateMachine.toProperty skipListSpec)
+//Check.Verbose(StateMachine.toProperty skipListSpec)
+//Check.Quick  (StateMachine.toProperty skipListSpec)
 
 
 let main argv =
