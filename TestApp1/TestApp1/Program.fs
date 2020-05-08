@@ -110,7 +110,7 @@ let skipListSpec =
                 |@ sprintf "IsEmpty: model = %b, actual = %b" (m.Length = 0) c.IsEmpty
              override __.ToString() = sprintf "isEmpty"
         }
-      let create = 
+    let create = 
         { new Setup<SkipList<int>,List<int>>() with
             member __.Actual() = SkipList(123) : SkipList<int>
             member ___.Model() = [] }
