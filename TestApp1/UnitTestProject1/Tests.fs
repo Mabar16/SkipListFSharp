@@ -24,9 +24,10 @@ type TestClass () =
                     |[] ->  List.rev(head)
             in innerRemove aList removeItem []
         
-        let removeMin = fun aList -> match aList with 
-        | [] -> []
-        | item::rest -> rest
+        let removeMin = fun aList -> 
+            match aList with 
+                | [] -> []
+                | item::rest -> rest
         
         let listEquals = fun (skipList:SkipList<int>) (fsList:List<int>) ->
             let mutable alist = fsList
@@ -142,7 +143,7 @@ type TestClass () =
                 member __.Run m = removeMin (List.sort m)
                 override __.Pre m = 
                     (m.Length) > 0
-                member __.Check (c, m) =
+                member __.Check (c, m) =                    
                     deleteMinCounter <- deleteMinCounter + 1
                     c.DeleteMin() |> ignore
                     let res = listEquals c m
@@ -161,7 +162,7 @@ type TestClass () =
                  override __.ToString() = sprintf "isEmpty"
             }
         
-        let opsGen1 = Gen.elements [clear; peek;count;isEmpty]
+        let opsGen1 = Gen.elements [clear; peek;count;isEmpty;deleteMin]
         let opsGen2 = Gen.elements [add;rem;find;contains]
         let opsGen2withArguments = 
             Gen.choose(-100,100) 
