@@ -34,6 +34,10 @@ let listEquals = fun (skipList:SkipList<int>) (fsList:List<int>) ->
 
 let numberGen = Gen.frequency([(8,Arb.generate<int>);(1,Gen.constant(System.Int32.MinValue));(1,Gen.constant(System.Int32.MaxValue))])
 
+let removeMin = fun aList -> match aList with 
+    | [] -> []
+    | item::rest -> rest
+
 let mutable addCounter = 0
 let mutable remCounter = 0
 let mutable findCounter = 0
@@ -42,6 +46,7 @@ let mutable clearCounter = 0
 let mutable emptyCounter = 0
 let mutable containsCounter = 0
 let mutable countCounter = 0
+let mutable deleteMinCounter = 0
 
 let add i = 
     { new Operation<SkipList<int>,List<int>>() with
@@ -147,6 +152,19 @@ let operationsGen = Gen.oneof[opsGen2withArguments; opsGen1]
 
 let skipListSpec = 
     let create seed= 
+    let deleteMin = 
+        { new Operation<SkipList<int>, List<int>>() with
+            member __.Run m = removeMin (List.sort m)
+            override __.Pre m = 
+            member __.Check (c, m) =
+                (m.Length) > 0
+                c.DeleteMin() |> ignore
+                deleteMinCounter <- deleteMinCounter + 1
+                let res = isSkipListEqualToList c m
+                in res = true
+                |@ sprintf "Delete Min: model = %A, actual = %A" m c
+            override __.ToString() = sprintf "delete min"
+        }
         { new Setup<SkipList<int>,List<int>>() with
             member __.Actual() = SkipList(seed) : SkipList<int>
             member ___.Model() = [] }
@@ -165,7 +183,7 @@ let rec countelemsininterval list min max accum = match list with
     then countelemsininterval rest min max (1+accum) 
     else countelemsininterval rest min max accum
     
-let commandSum = addCounter + remCounter + clearCounter + countCounter + emptyCounter + containsCounter + findCounter + peekCounter
+let commandSum = addCounter + remCounter + clearCounter + countCounter + emptyCounter + containsCounter + findCounter + peekCounter + deleteMinCounter
 let printstats list =  
     
     Console.WriteLine("0-20: " + (countelemsininterval list 0 20 0).ToString())
@@ -182,6 +200,7 @@ let printstats list =
     Console.WriteLine("Contains: "+ float(float(containsCounter)/float(commandSum)).ToString())
     Console.WriteLine("Finds: "+ float(float(findCounter)/float(commandSum)).ToString())
     Console.WriteLine("Peeks: "+ float(float(peekCounter)/float(commandSum)).ToString())
+    Console.WriteLine("DeleteMins: "+ float(float(deleteMinCounter)/float(commandSum)).ToString())
     
 printstats statslist
 
