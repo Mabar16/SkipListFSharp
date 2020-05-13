@@ -25,6 +25,17 @@ let isSkipListEqualToList = fun (skipList:SkipList<int>) (fsList:List<int>) ->
             | a::rest -> skipList2.Contains(a) && matchList skipList2 rest 
         in matchList skipList fsList
 
+let betterEquals = fun (skipList:SkipList<int>) (fsList:List<int>) ->
+    let mutable alist = fsList
+    let mutable equalsSoFar = true
+    let mutable count = 0
+    for item in skipList do
+        count <- count+1
+        match alist with 
+        item2::rest -> if item <> item2 then equalsSoFar <- false else alist <- rest
+        |[] -> equalsSoFar <- false
+    equalsSoFar && count = List.length fsList
+
 let numberGen = Gen.frequency([(8,Arb.generate<int>);(1,Gen.constant(System.Int32.MinValue));(1,Gen.constant(System.Int32.MaxValue))])
 
 let skipListSpec = 
@@ -34,7 +45,7 @@ let skipListSpec =
             member __.Check (c, m) =
                 c.Add(i)
                 statslist <- i::statslist
-                let res = isSkipListEqualToList c m//c.Contains(i)
+                let res = betterEquals c m//c.Contains(i)
                    in res = true
                 |@ sprintf "Add: model = %s, actual = %s" (m.ToString()) (c.ToString())
             override __.ToString() = sprintf "add %i" i }
@@ -46,7 +57,7 @@ let skipListSpec =
             member __.Check (c,m) = 
                 statslist <- i::statslist
                 c.Remove(i) |> ignore;
-                let res =isSkipListEqualToList c m 
+                let res =betterEquals c m 
                 in res = true
                 |@ sprintf "Rem: model = %s, actual = %s" (m.ToString()) (c.ToString())
             override __.ToString() = sprintf "rem %i" i 
@@ -56,7 +67,7 @@ let skipListSpec =
             member __.Run m = []
             member __.Check (c,m) = 
                 c.Clear()
-                let res = isSkipListEqualToList c m && c.IsEmpty
+                let res = betterEquals c m && c.IsEmpty
                 in res = true
                 |@ sprintf "Clear: model = %s, actual = %s" (m.ToString()) (c.ToString())
             override __.ToString() = sprintf "clear"
@@ -121,11 +132,11 @@ let skipListSpec =
             member ___.Model() = [] }
     { new Machine<SkipList<int>, List<int>>() with 
         member __.Setup =  Gen.constant create |> Arb.fromGen
-        member __.Next _ =  Gen.oneof[ Gen.choose(0,100) |> Gen.map2 (fun op i -> op i) (Gen.elements [add;rem;find;contains]); Gen.elements [clear; peek;count;isEmpty]]}
+        member __.Next _ =  Gen.oneof[ Gen.choose(-100,100) |> Gen.map2 (fun op i -> op i) (Gen.elements [add;rem;find;contains]); Gen.elements [clear; peek;count;isEmpty]]}
 
 
-[<EntryPoint>]
-Check.Quick (StateMachine.toProperty skipListSpec)
+let configuration = {Config.Quick with MaxTest = 10; Config.Name = "SkipList test" } in
+Check.One(configuration,  StateMachine.toProperty skipListSpec)
 
 let rec countelemsininterval list min max accum = match list with
     [] -> accum
@@ -136,7 +147,6 @@ let rec countelemsininterval list min max accum = match list with
     
 
 let printstats list =  
-    
     Console.WriteLine("less than 0: " + (countelemsininterval list -999999 0 0).ToString())
     Console.WriteLine("0-5: " + (countelemsininterval list 0 5 0).ToString())
     Console.WriteLine("5-100: " + (countelemsininterval list 5 100 0).ToString())
@@ -144,8 +154,11 @@ let printstats list =
     Console.WriteLine("LARGE: " + (countelemsininterval list 1000 99999999 0).ToString())
     
 printstats statslist
+
+[<EntryPoint>]
 let main argv =
- 
+    let sl = SkipList<int>(123) in sl.Add(1); sl.Add(1); sl.Add(2);
+        Console.WriteLine(betterEquals sl [2;2;1])
     0 // return an integer exit code
 
 
