@@ -110,6 +110,19 @@ let find i=
             |@ sprintf "Find returned: model = %A, actual = %A" (mres,i) res
         override __.ToString() = sprintf "find %i" i
         }
+let deleteMin = 
+    { new Operation<SkipList<int>, List<int>>() with
+        member __.Run m = removeMin (List.sort m)
+        override __.Pre m = 
+            (m.Length) > 0
+        member __.Check (c, m) =
+            c.DeleteMin() |> ignore
+            deleteMinCounter <- deleteMinCounter + 1
+            let res = listEquals c m
+            in res = true
+            |@ sprintf "Delete Min: model = %A, actual = %A" m c
+        override __.ToString() = sprintf "delete min"
+    }
 let contains i= 
       { new Operation<SkipList<int>, List<int>>() with
           member __.Run m = m
@@ -143,7 +156,7 @@ let isEmpty =
          override __.ToString() = sprintf "isEmpty"
     }
 
-let opsGen1 = Gen.elements [clear; peek;count;isEmpty]
+let opsGen1 = Gen.elements [clear; peek;count;isEmpty;deleteMin]
 let opsGen2 = Gen.elements [add;rem;find;contains]
 let opsGen2withArguments = 
     Gen.choose(-100,100) 
@@ -152,19 +165,6 @@ let operationsGen = Gen.oneof[opsGen2withArguments; opsGen1]
 
 let skipListSpec = 
     let create seed= 
-    let deleteMin = 
-        { new Operation<SkipList<int>, List<int>>() with
-            member __.Run m = removeMin (List.sort m)
-            override __.Pre m = 
-            member __.Check (c, m) =
-                (m.Length) > 0
-                c.DeleteMin() |> ignore
-                deleteMinCounter <- deleteMinCounter + 1
-                let res = isSkipListEqualToList c m
-                in res = true
-                |@ sprintf "Delete Min: model = %A, actual = %A" m c
-            override __.ToString() = sprintf "delete min"
-        }
         { new Setup<SkipList<int>,List<int>>() with
             member __.Actual() = SkipList(seed) : SkipList<int>
             member ___.Model() = [] }
