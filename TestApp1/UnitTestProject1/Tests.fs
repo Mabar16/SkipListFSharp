@@ -24,6 +24,9 @@ type TestClass () =
                     |[] ->  List.rev(head)
             in innerRemove aList removeItem []
         
+        let removeMin = fun aList -> match aList with 
+        | [] -> []
+        | item::rest -> rest
         
         let listEquals = fun (skipList:SkipList<int>) (fsList:List<int>) ->
             let mutable alist = fsList
@@ -48,6 +51,7 @@ type TestClass () =
         let mutable emptyCounter = 0
         let mutable containsCounter = 0
         let mutable countCounter = 0
+        let mutable deleteMinCounter = 0
         
         let add i = 
             { new Operation<SkipList<int>,List<int>>() with
@@ -132,6 +136,19 @@ type TestClass () =
                     in res = true
                     |@ sprintf "Count: model = %i, actual = %i" m.Length c.Count
                 override __.ToString() = sprintf "count"
+            }
+        let deleteMin = 
+            { new Operation<SkipList<int>, List<int>>() with
+                member __.Run m = removeMin (List.sort m)
+                override __.Pre m = 
+                    (m.Length) > 0
+                member __.Check (c, m) =
+                    deleteMinCounter <- deleteMinCounter + 1
+                    c.DeleteMin() |> ignore
+                    let res = listEquals c m
+                    in res = true
+                    |@ sprintf "Delete Min: model = %A, actual = %A" m c
+                override __.ToString() = sprintf "delete min"
             }
         let isEmpty = 
             { new Operation<SkipList<int>, List<int>>() with
