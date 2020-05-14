@@ -65,11 +65,16 @@ let rem i =
         override __.Pre m = 
             (m.Length) > 0
         member __.Check (c,m) = 
+            Console.WriteLine("REM "+i.ToString())
             remCounter <- remCounter + 1
             statslist <- i::statslist
+            //lazy 
             c.Remove(i) |> ignore;
             let res =listEquals c m 
-            in res = true
+            in  res = true 
+            //|> Prop.within 1000 
+              
+           
             |@ sprintf "Rem: model = %s, actual = %s" (m.ToString()) (c.ToString())
         override __.ToString() = sprintf "rem %i" i 
         }
@@ -161,7 +166,7 @@ let opsGen2 = Gen.elements [add;rem;find;contains]
 let opsGen2withArguments = 
     Gen.choose(-100,100) 
     |> Gen.map2 (fun op i -> op i) opsGen2
-let operationsGen = Gen.oneof[opsGen2withArguments; opsGen1]
+let operationsGen = Gen.oneof[opsGen1;opsGen2withArguments]
 
 let skipListSpec = 
     let create seed= 
@@ -173,7 +178,7 @@ let skipListSpec =
         member __.Next _ =  operationsGen}
 
 
-let configuration = {Config.Quick with MaxTest = 100; Config.Name = "SkipList test" } in
+let configuration = {Config.Quick with MaxTest = 1000; Config.Name = "SkipList test" } in
 Check.One(configuration,  StateMachine.toProperty skipListSpec)
 
 let rec countelemsininterval list min max accum = match list with
@@ -206,8 +211,23 @@ printstats statslist
 
 [<EntryPoint>]
 let main argv =
-    let sl = SkipList<int>(123) in sl.Add(1); sl.Add(1); sl.Add(2);
-        Console.WriteLine(listEquals sl [2;2;1])
+    let sl = SkipList<int>(123) in 
+    sl.Contains(64);
+    sl.Clear();
+    sl.Add(-60); 
+    sl.Add(93); 
+    sl.Remove(-69);
+    //Console.WriteLine(listEquals sl [-59;-57;29])
+    sl.DeleteMin();
+    sl.Remove(-33);
+    sl.DeleteMin();
+    sl.Contains(42);
+    sl.Contains(-52);
+    sl.Add(14);
+    Console.WriteLine(listEquals sl [14])
+    sl.Find(4);
+    Console.WriteLine(listEquals sl [14])
+    Console.WriteLine(sl)
     0 // return an integer exit code
 
 
