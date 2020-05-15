@@ -32,7 +32,7 @@ let listEquals = fun (skipList:SkipList<int>) (fsList:List<int>) ->
         |[] -> equalsSoFar <- false
     equalsSoFar && count = List.length fsList
 
-let numberGen = Gen.frequency([(8,Arb.generate<int>);(1,Gen.constant(System.Int32.MinValue));(1,Gen.constant(System.Int32.MaxValue))])
+
 
 let removeMin = fun aList -> match aList with 
     | [] -> []
@@ -65,7 +65,7 @@ let rem i =
         override __.Pre m = 
             (m.Length) > 0
         member __.Check (c,m) = 
-            Console.WriteLine("REM "+i.ToString())
+           
             remCounter <- remCounter + 1
             statslist <- i::statslist
             //lazy 
@@ -161,12 +161,13 @@ let isEmpty =
          override __.ToString() = sprintf "isEmpty"
     }
 
-let opsGen1 = Gen.elements [clear; peek;count;isEmpty;deleteMin]
-let opsGen2 = Gen.elements [add;rem;find;contains]
+let numberGen = Gen.frequency([(8,Arb.generate<int>);(3, Gen.choose(-3,3));(1,Gen.constant(System.Int32.MinValue));(1,Gen.constant(System.Int32.MaxValue))])
+let opsGen1 = Gen.frequency([(1,Gen.constant clear); (2,Gen.constant peek);(2,Gen.constant count);(2,Gen.constant isEmpty);(3,Gen.constant deleteMin)])
+let opsGen2 = Gen.frequency([(5,Gen.constant add);(3,Gen.constant rem);(2,Gen.constant find);(2,Gen.constant contains)])
 let opsGen2withArguments = 
-    Gen.choose(-100,100) 
+    numberGen 
     |> Gen.map2 (fun op i -> op i) opsGen2
-let operationsGen = Gen.oneof[opsGen1;opsGen2withArguments]
+let operationsGen = Gen.frequency[(1,opsGen1);(3,opsGen2withArguments)]
 
 let skipListSpec = 
     let create seed= 
@@ -178,24 +179,27 @@ let skipListSpec =
         member __.Next _ =  operationsGen}
 
 
-let configuration = {Config.Quick with MaxTest = 1000; Config.Name = "SkipList test" } in
+let configuration = {Config.Quick with MaxTest = 10000; Config.Name = "SkipList test" } in
 Check.One(configuration,  StateMachine.toProperty skipListSpec)
 
 let rec countelemsininterval list min max accum = match list with
     [] -> accum
     | i::rest -> 
-    if (i >= min && i < max) 
+    if (i >= min && i <= max) 
     then countelemsininterval rest min max (1+accum) 
     else countelemsininterval rest min max accum
     
 let commandSum = addCounter + remCounter + clearCounter + countCounter + emptyCounter + containsCounter + findCounter + peekCounter + deleteMinCounter
 let printstats list =  
     
-    Console.WriteLine("0-20: " + (countelemsininterval list 0 20 0).ToString())
-    Console.WriteLine("20-40: " + (countelemsininterval list 20 40 0).ToString())
-    Console.WriteLine("40-60: " + (countelemsininterval list 40 60 0).ToString())
-    Console.WriteLine("60-80: " + (countelemsininterval list 60 80 0).ToString())
-    Console.WriteLine("80-100: " + (countelemsininterval list 80 101 0).ToString())
+    Console.WriteLine("System.Int32.MinValue: " + (countelemsininterval list (System.Int32.MinValue) System.Int32.MinValue 0).ToString())
+    Console.WriteLine("System.Int32.MinValue+1 -200: " + (countelemsininterval list (System.Int32.MinValue+1) -200 0).ToString())
+    Console.WriteLine("-200 -5: " + (countelemsininterval list -200 -5 0).ToString())
+    Console.WriteLine("-5 0: " + (countelemsininterval list -5 0 0).ToString())
+    Console.WriteLine("0 5: " + (countelemsininterval list 0 5 0).ToString())
+    Console.WriteLine("5 200: " + (countelemsininterval list 5 200 0).ToString())
+    Console.WriteLine("200 System.Int32.MaxValue: " + (countelemsininterval list 200 (System.Int32.MaxValue-1) 0).ToString())
+    Console.WriteLine("System.Int32.MaxValue: " + (countelemsininterval list System.Int32.MaxValue System.Int32.MaxValue 0).ToString())
     Console.WriteLine("\n")
     Console.WriteLine("Adds: "+ float(float(addCounter)/float(commandSum)).ToString())
     Console.WriteLine("Rems: "+ float(float(remCounter)/float(commandSum)).ToString())
